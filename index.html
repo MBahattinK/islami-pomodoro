@@ -71,6 +71,9 @@
   .err{color:#ffb4a2;font-size:.85rem;margin-top:10px;min-height:1em}
 
   /* Giriş */
+  .welcome-text{text-align:left;max-width:560px;margin:0 auto;line-height:1.7;font-size:1rem}
+  .welcome-text p{margin-bottom:12px}
+  .welcome-text b{color:var(--gold2)}
   .basmala{font-size:2.6rem;color:var(--gold2);line-height:1.6}
   .dua{font-size:2.2rem;color:var(--gold2);margin-top:18px;line-height:1.6}
   .meaning{color:var(--muted);font-style:italic;margin-top:4px}
@@ -134,8 +137,19 @@
 <main>
   <div class="card">
 
+    <!-- 0. Açıklama -->
+    <section class="screen show" id="s-welcome">
+      <h2>Hoş geldin</h2>
+      <div class="welcome-text">
+        <p><b>İlim Vakti</b>, ders çalışmayı ibadet bilinciyle birleştiren bir pomodoro sayacıdır.</p>
+        <p>Pomodoro tekniği, belirli bir süre bütün dikkatinle çalışıp ardından kısa bir mola vermene dayanır. Böylece zihnin yorulmadan uzun süre verimli kalır.</p>
+        <p>Burada her çalışmaya Besmele ve <i>“Rabbim, ilmimi artır”</i> duasıyla başlarsın, molalarını da zikirle değerlendirirsin. Amaç, hem dersine odaklanmak hem de vaktini bereketli kılmak.</p>
+      </div>
+      <button class="btn" id="welcomeGo">Okudum, başlayalım</button>
+    </section>
+
     <!-- 1. Kurulum -->
-    <section class="screen show" id="s-setup">
+    <section class="screen" id="s-setup">
       <h2>Bugün ne çalışacaksın?</h2>
       <label for="subject">Ders</label>
       <input id="subject" placeholder="ör. Matematik – Türev" maxlength="60">
@@ -451,6 +465,7 @@ $("startBtn").onclick = ()=>{
   show("s-intro");
 };
 $("introGo").onclick = startWork;
+$("welcomeGo").onclick = ()=>{ show("s-setup"); $("subject").focus(); };
 
 function startWork(){
   $("wSubject").textContent = cfg.subject;
