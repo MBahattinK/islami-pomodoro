@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlim Vakti – İslami Pomodoro</title>
+<style>
+  :root{
+    --bg:#0c2a20; --bg2:#123d2e; --gold:#d4af37; --gold2:#f1d77a;
+    --text:#f5efdc; --muted:#c9bf9f; --card:rgba(0,0,0,.45);
+    --accent:#d4af37;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='.13' stroke-width='1.2'%3E%3Crect x='22' y='22' width='36' height='36'/%3E%3Crect x='22' y='22' width='36' height='36' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='9'/%3E%3Cpath d='M0 0L22 22M80 0L58 22M0 80L22 58M80 80L58 58'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(ellipse at top,var(--bg2),var(--bg) 70%);
+    background-attachment:fixed;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    transition:background-color .8s;
+  }
+  .arabic{font-family:"Traditional Arabic","Arabic Typesetting","Amiri","Scheherazade New",serif;direction:rtl}
+
+  header{width:100%;max-width:760px;padding:18px 16px 6px;text-align:center}
+  header h1{font-size:1.5rem;letter-spacing:.06em;color:var(--gold2);font-weight:600}
+  header h1 span{font-size:1.7rem;margin-left:8px}
+
+  /* Şehir yolculuğu */
+  .journey{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0 4px}
+  .city{
+    border:1px solid rgba(212,175,55,.35);background:rgba(0,0,0,.25);color:var(--text);
+    border-radius:12px;padding:8px 12px;min-width:118px;cursor:pointer;font:inherit;font-size:.85rem;
+    transition:.2s;
+  }
+  .city small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
+  .city.active{border-color:var(--accent);background:rgba(212,175,55,.18);box-shadow:0 0 0 1px var(--accent) inset}
+  .city.locked{opacity:.45;cursor:not-allowed}
+  .city:not(.locked):hover{border-color:var(--gold2)}
+  .progress-note{font-size:.8rem;color:var(--muted);text-align:center}
+
+  main{width:100%;max-width:760px;padding:10px 16px 0;flex:1;display:flex;flex-direction:column}
+  .card{
+    background:var(--card);border:1px solid rgba(212,175,55,.4);border-radius:20px;
+    padding:28px 26px;text-align:center;backdrop-filter:blur(4px);
+    box-shadow:0 10px 40px rgba(0,0,0,.35);position:relative;overflow:hidden;
+  }
+  .card::before,.card::after{content:"۞";position:absolute;color:var(--gold);opacity:.35;font-size:1.4rem;top:10px}
+  .card::before{left:14px}.card::after{right:14px}
+  .screen{display:none}.screen.show{display:block;animation:fade .5s}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  h2{color:var(--gold2);font-weight:500;margin-bottom:18px;font-size:1.25rem}
+  label{display:block;text-align:left;font-size:.85rem;color:var(--muted);margin:12px 0 5px}
+  input,select{
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(212,175,55,.4);
+    background:rgba(0,0,0,.3);color:var(--text);font:inherit;font-size:1rem;outline:none;
+  }
+  input:focus,select:focus{border-color:var(--gold2)}
+  select option{background:#10291f}
+  .row{display:flex;gap:12px}.row>div{flex:1}
+  .btn{
+    margin-top:20px;padding:12px 26px;border-radius:999px;border:1px solid var(--gold);
+    background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2a1f05;font:inherit;font-weight:600;
+    font-size:1rem;cursor:pointer;transition:.2s;
+  }
+  .btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn.ghost{background:transparent;color:var(--gold2)}
+  .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .err{color:#ffb4a2;font-size:.85rem;margin-top:10px;min-height:1em}
+
+  /* Giriş */
+  .basmala{font-size:2.6rem;color:var(--gold2);line-height:1.6}
+  .dua{font-size:2.2rem;color:var(--gold2);margin-top:18px;line-height:1.6}
+  .meaning{color:var(--muted);font-style:italic;margin-top:4px}
+  .ref{font-size:.8rem;color:var(--muted);opacity:.8}
+
+  /* Sayaç */
+  .subject{font-size:1.1rem;color:var(--muted)}
+  .subject b{color:var(--text)}
+  .ring-wrap{position:relative;width:250px;height:250px;margin:16px auto 6px}
+  .ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:10}
+  .ring-fg{fill:none;stroke:var(--accent);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .4s linear}
+  .time{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .time .t{font-size:3.4rem;font-variant-numeric:tabular-nums;font-weight:300;letter-spacing:.03em}
+  .time .ph{font-size:.85rem;color:var(--muted);margin-top:2px}
+
+  /* Zikir */
+  .zikr-ar{font-size:2.4rem;color:var(--gold2);margin:6px 0 0;line-height:1.5}
+  .zikr-tr{color:var(--muted);margin-bottom:6px}
+  .tesbih{
+    width:150px;height:150px;border-radius:50%;margin:14px auto 6px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;cursor:pointer;user-select:none;
+    background:radial-gradient(circle at 35% 30%,var(--gold2),var(--gold) 55%,#8a6d14);
+    color:#2a1f05;box-shadow:0 6px 24px rgba(0,0,0,.4),0 0 0 6px rgba(212,175,55,.2);
+    transition:transform .08s;border:none;font:inherit;
+  }
+  .tesbih:active{transform:scale(.95)}
+  .tesbih .n{font-size:2.6rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .tesbih .of{font-size:.85rem}
+  .tesbih.done{background:radial-gradient(circle at 35% 30%,#b9f0c8,#3fa865 60%,#1d6b3a);color:#062012}
+  .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.1);margin:10px auto 0;max-width:300px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .break-time{font-size:1.6rem;font-variant-numeric:tabular-nums;color:var(--gold2)}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:6px}
+
+  .toast{
+    position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-120px);
+    background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2a1f05;padding:12px 22px;border-radius:14px;
+    font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.4);transition:transform .5s;z-index:10;text-align:center
+  }
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  /* Silüet */
+  .skyline{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:900px;
+    padding:0 16px;pointer-events:none;z-index:0;opacity:.85}
+  .skyline svg{width:100%;height:auto;max-height:38vh;display:block}
+  .cityname{position:fixed;bottom:4px;left:0;right:0;text-align:center;color:var(--text);font-size:.8rem;
+    letter-spacing:.08em;z-index:2;text-shadow:0 1px 4px #000;pointer-events:none}
+  header,main{position:relative;z-index:1}
+  main{padding-bottom:28px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>İlim Vakti <span class="arabic">وَقْتُ الْعِلْمِ</span></h1>
+  <div class="journey" id="journey"></div>
+  <div class="progress-note" id="progressNote"></div>
+</header>
+
+<main>
+  <div class="card">
+
+    <!-- 1. Kurulum -->
+    <section class="screen show" id="s-setup">
+      <h2>Bugün ne çalışacaksın?</h2>
+      <label for="subject">Ders</label>
+      <input id="subject" placeholder="ör. Matematik – Türev" maxlength="60">
+      <div class="row">
+        <div>
+          <label for="workMin">Çalışma süresi (dakika)</label>
+          <input id="workMin" type="number" min="1" max="300" value="25">
+        </div>
+        <div>
+          <label for="breakMin">Mola süresi (dakika)</label>
+          <input id="breakMin" type="number" min="0" max="120" value="5">
+        </div>
+      </div>
+      <div class="err" id="err"></div>
+      <button class="btn" id="startBtn">Bismillah, başla</button>
+    </section>
+
+    <!-- 2. Besmele + dua -->
+    <section class="screen" id="s-intro">
+      <div class="basmala arabic">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيمِ</div>
+      <div class="meaning">Rahmân ve Rahîm olan Allah'ın adıyla.</div>
+      <div class="dua arabic">رَبِّ زِدْنِي عِلْمًا</div>
+      <div class="meaning">“Rabbim, ilmimi artır.”</div>
+      <div class="ref">Tâhâ Sûresi, 114</div>
+      <button class="btn" id="introGo">Âmin, sayaç başlasın</button>
+    </section>
+
+    <!-- 3. Çalışma -->
+    <section class="screen" id="s-work">
+      <div class="subject">Çalışılan ders: <b id="wSubject"></b></div>
+      <div class="ring-wrap">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="52"/>
+          <circle class="ring-fg" id="ring" cx="60" cy="60" r="52"/>
+        </svg>
+        <div class="time"><div class="t" id="wTime">25:00</div><div class="ph">çalışma</div></div>
+      </div>
+      <div class="btns">
+        <button class="btn ghost" id="pauseBtn">Duraklat</button>
+        <button class="btn ghost" id="cancelBtn">Vazgeç</button>
+      </div>
+    </section>
+
+    <!-- 4. Mola + zikir -->
+    <section class="screen" id="s-break">
+      <h2>Mola vakti – kalbini zikirle dinlendir</h2>
+      <div class="break-time" id="bTime">05:00</div>
+      <div class="row" style="margin-top:6px">
+        <div>
+          <label for="zikrSel">Zikir</label>
+          <select id="zikrSel"></select>
+        </div>
+        <div>
+          <label for="target">Hedef</label>
+          <input id="target" type="number" min="1" max="10000" value="33">
+        </div>
+      </div>
+      <div class="zikr-ar arabic" id="zAr"></div>
+      <div class="zikr-tr" id="zTr"></div>
+      <button class="tesbih" id="tesbih"><span class="n" id="zCount">0</span><span class="of" id="zOf">/ 33</span></button>
+      <div class="bar"><i id="zBar"></i></div>
+      <div class="hint">Saymak için tesbihe tıkla veya boşluk tuşuna bas</div>
+      <div class="btns">
+        <button class="btn ghost" id="zReset">Sayacı sıfırla</button>
+        <button class="btn ghost" id="skipBreak">Molayı bitir</button>
+      </div>
+    </section>
+
+    <!-- 5. Bitti -->
+    <section class="screen" id="s-done">
+      <h2 id="doneTitle">Mola bitti</h2>
+      <div class="arabic" style="font-size:2rem;color:var(--gold2)">الْحَمْدُ لِلّٰهِ</div>
+      <div class="meaning" id="doneText"></div>
+      <div class="btns">
+        <button class="btn" id="againBtn">Aynı dersle devam et</button>
+        <button class="btn ghost" id="newBtn">Yeni ders</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="skyline" id="skyline"></div>
+<div class="cityname" id="cityName"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Şehirler (sırayla açılır) ---------- */
+const CITIES = [
+  { id:"kabe", name:"Mekke · Kâbe", short:"Kâbe", need:0,
+    bg:"#141210", bg2:"#2a2418", accent:"#d4af37",
+    svg:`
+      <g fill="#3a3122" opacity=".9">
+        <rect x="20" y="70" width="12" height="120"/><path d="M18 70 L26 40 L34 70Z"/>
+        <rect x="368" y="70" width="12" height="120"/><path d="M366 70 L374 40 L382 70Z"/>
+        <rect x="50" y="95" width="10" height="95"/><path d="M48 95 L55 70 L62 95Z"/>
+        <rect x="340" y="95" width="10" height="95"/><path d="M338 95 L345 70 L352 95Z"/>
+        <rect x="0" y="160" width="400" height="30"/>
+      </g>
+      <polygon points="135,72 238,66 238,190 135,190" fill="#0a0a0a"/>
+      <polygon points="238,66 288,76 288,186 238,190" fill="#1b1b1b"/>
+      <polygon points="135,72 238,66 288,76 186,82" fill="#262626"/>
+      <polygon points="135,96 238,91 238,103 135,108" fill="#d4af37"/>
+      <polygon points="238,91 288,99 288,110 238,103" fill="#b08f2c"/>
+      <rect x="205" y="128" width="20" height="40" fill="#d4af37"/>
+      <rect x="208" y="131" width="14" height="34" fill="none" stroke="#7a6220" stroke-width="1.2"/>
+      <rect x="0" y="188" width="400" height="12" fill="#e8e2d2" opacity=".25"/>`},
+
+  { id:"medine", name:"Medine · Mescid-i Nebevî", short:"Medine", need:1,
+    bg:"#0c2a20", bg2:"#14503a", accent:"#d4af37",
+    svg:`
+      <g fill="#0f3a2b">
+        <rect x="30" y="140" width="340" height="50"/>
+      </g>
+      <g fill="#e9e1c8">
+        <rect x="70" y="45" width="14" height="145"/><path d="M66 45 L77 12 L88 45Z"/>
+        <rect x="64" y="80" width="26" height="5"/><rect x="64" y="115" width="26" height="5"/>
+        <rect x="316" y="45" width="14" height="145"/><path d="M312 45 L323 12 L334 45Z"/>
+        <rect x="310" y="80" width="26" height="5"/><rect x="310" y="115" width="26" height="5"/>
+        <rect x="30" y="140" width="340" height="6"/>
+      </g>
+      <rect x="155" y="112" width="90" height="30" fill="#e9e1c8"/>
+      <path d="M158 114 Q158 52 200 40 Q242 52 242 114 Z" fill="#2f9a55"/>
+      <path d="M170 110 Q172 66 200 52" fill="none" stroke="#5fc583" stroke-width="2" opacity=".6"/>
+      <rect x="198" y="22" width="4" height="20" fill="#d4af37"/>
+      <circle cx="200" cy="20" r="4" fill="#d4af37"/>
+      <g fill="#0b2c20">${[50,90,130,250,290,330].map(x=>`<path d="M${x} 190 L${x} 165 Q${x+8} 152 ${x+16} 165 L${x+16} 190Z"/>`).join("")}</g>`},
+
+  { id:"kudus", name:"Kudüs · Kubbetü's-Sahra & Mescid-i Aksâ", short:"Filistin", need:2,
+    bg:"#0b2238", bg2:"#16466e", accent:"#e0b84a",
+    svg:`
+      <g fill="#c9b48a" opacity=".55">
+        <rect x="290" y="135" width="100" height="55"/>
+        <path d="M325 135 Q325 108 340 104 Q355 108 355 135Z" fill="#8a9aa8"/>
+        <rect x="20" y="100" width="12" height="90"/><path d="M18 100 L26 78 L34 100Z"/>
+      </g>
+      <rect x="105" y="122" width="190" height="68" fill="#2a6fa8"/>
+      <rect x="105" y="122" width="190" height="8" fill="#1d5585"/>
+      <g fill="#123c61">${[118,146,174,202,230,258].map(x=>`<path d="M${x} 180 L${x} 150 Q${x+9} 138 ${x+18} 150 L${x+18} 180Z"/>`).join("")}</g>
+      <rect x="150" y="98" width="100" height="26" fill="#2f7cbb"/>
+      <g fill="#123c61">${[158,178,198,218,238].map(x=>`<rect x="${x}" y="104" width="6" height="14" rx="3"/>`).join("")}</g>
+      <path d="M146 100 Q146 32 200 24 Q254 32 254 100 Z" fill="#e0b84a"/>
+      <path d="M160 96 Q162 48 200 34" fill="none" stroke="#f7dc8a" stroke-width="2.5" opacity=".7"/>
+      <rect x="198" y="8" width="4" height="18" fill="#e0b84a"/>
+      <path d="M195 8 a6 6 0 1 0 10 -2 a4.5 4.5 0 1 1 -10 2Z" fill="#e0b84a"/>
+      <rect x="0" y="188" width="400" height="12" fill="#c9b48a" opacity=".35"/>`},
+
+  { id:"sam", name:"Şam · Emevî Camii", short:"Şam", need:3,
+    bg:"#2a1d15", bg2:"#4d3626", accent:"#d9a95b",
+    svg:`
+      <g fill="#c9a26b">
+        <rect x="40" y="130" width="320" height="60"/>
+        <rect x="160" y="100" width="80" height="35"/>
+        <path d="M160 100 L200 82 L240 100Z"/>
+        <rect x="180" y="72" width="40" height="14"/>
+        <path d="M180 74 Q180 34 200 30 Q220 34 220 74Z" fill="#8e7356"/>
+        <rect x="198" y="16" width="4" height="16"/>
+        <rect x="48" y="60" width="14" height="130"/><rect x="45" y="58" width="20" height="5"/>
+        <path d="M48 58 L55 34 L62 58Z"/>
+        <rect x="335" y="40" width="22" height="150"/><rect x="331" y="38" width="30" height="6"/>
+        <rect x="339" y="20" width="14" height="20"/><path d="M337 20 L346 0 L355 20Z"/>
+        <rect x="268" y="80" width="14" height="60"/><path d="M266 80 L275 58 L284 80Z"/>
+      </g>
+      <g fill="#5a3f2b">${[60,90,120,250,280,310].map(x=>`<path d="M${x} 185 L${x} 155 Q${x+10} 142 ${x+20} 155 L${x+20} 185Z"/>`).join("")}</g>
+      <g fill="#3fa06a" opacity=".85"><rect x="170" y="110" width="60" height="18"/></g>
+      <g fill="#5a3f2b">${[175,195,215].map(x=>`<rect x="${x}" y="112" width="10" height="14" rx="5"/>`).join("")}</g>
+      <rect x="0" y="188" width="400" height="12" fill="#c9a26b" opacity=".3"/>`},
+
+  { id:"turkistan", name:"Kaşgar · Iydgâh Camii (Doğu Türkistan)", short:"Doğu Türkistan", need:4,
+    bg:"#0d2a45", bg2:"#1f5c8f", accent:"#6fb3e6",
+    svg:`
+      <rect x="40" y="140" width="320" height="50" fill="#e3c46a"/>
+      <rect x="40" y="140" width="320" height="6" fill="#f3e1a4"/>
+      <g fill="#b8963c">${[60,88,116,256,284,312].map(x=>`<path d="M${x} 186 L${x} 162 Q${x+9} 150 ${x+18} 162 L${x+18} 186Z"/>`).join("")}</g>
+      <rect x="148" y="88" width="104" height="102" fill="#ecd07c"/>
+      <rect x="148" y="88" width="104" height="7" fill="#f6e6ad"/>
+      <path d="M168 190 L168 132 Q200 92 232 132 L232 190Z" fill="#8a6a22"/>
+      <path d="M178 190 L178 136 Q200 106 222 136 L222 190Z" fill="#2e7d5b"/>
+      <g fill="#f3ead0">
+        <rect x="132" y="52" width="16" height="138"/><rect x="129" y="50" width="22" height="6"/>
+        <path d="M132 50 Q140 30 148 50Z"/><rect x="138" y="22" width="3" height="12"/>
+        <rect x="252" y="52" width="16" height="138"/><rect x="249" y="50" width="22" height="6"/>
+        <path d="M252 50 Q260 30 268 50Z"/><rect x="259" y="22" width="3" height="12"/>
+      </g>
+      <g fill="#6fb3e6">
+        <rect x="132" y="100" width="16" height="4"/><rect x="252" y="100" width="16" height="4"/>
+        <rect x="132" y="140" width="16" height="4"/><rect x="252" y="140" width="16" height="4"/>
+      </g>
+      <path d="M190 20 a9 9 0 1 0 14 -4 a7 7 0 1 1 -14 4Z" fill="#f3ead0" opacity=".9"/>
+      <rect x="0" y="188" width="400" height="12" fill="#e3c46a" opacity=".3"/>`}
+];
+
+/* ---------- Zikirler ---------- */
+const ZIKRS = [
+  { ar:"سُبْحَانَ اللّٰهِ", tr:"Sübhânallah – Allah her türlü eksiklikten münezzehtir", t:33 },
+  { ar:"الْحَمْدُ لِلّٰهِ", tr:"Elhamdülillâh – Hamd Allah'a mahsustur", t:33 },
+  { ar:"اللّٰهُ أَكْبَرُ", tr:"Allâhu Ekber – Allah en büyüktür", t:33 },
+  { ar:"لَا إِلٰهَ إِلَّا اللّٰهُ", tr:"Lâ ilâhe illallah – Allah'tan başka ilah yoktur", t:100 },
+  { ar:"أَسْتَغْفِرُ اللّٰهَ", tr:"Estağfirullah – Allah'tan bağışlanma dilerim", t:100 },
+  { ar:"اللّٰهُمَّ صَلِّ عَلَى مُحَمَّدٍ", tr:"Allâhümme salli alâ Muhammed – Salavât-ı şerîfe", t:100 },
+  { ar:"لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللّٰهِ", tr:"Lâ havle ve lâ kuvvete illâ billâh", t:33 }
+];
+
+/* ---------- Durum ---------- */
+// localStorage kullanılamazsa (ör. bazı gizli pencereler) bellekte tut
+const LS = (()=>{
+  try{ const k="__t"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return localStorage; }
+  catch(e){ const m={}; return { getItem:k=>k in m?m[k]:null, setItem:(k,v)=>{m[k]=String(v)} }; }
+})();
+const store = {
+  get sessions(){ return +LS.getItem("ip_sessions") || 0 },
+  set sessions(v){ LS.setItem("ip_sessions", v) },
+  get city(){ return LS.getItem("ip_city") },
+  set city(v){ LS.setItem("ip_city", v) },
+};
+const $ = id => document.getElementById(id);
+let cfg = { subject:"", work:25, brk:5 };
+let timer = null, endAt = 0, total = 0, remaining = 0, paused = false, onFinish = null, onTick = null;
+let zCount = 0, zTarget = 33;
+
+/* ---------- Ekranlar ---------- */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("show", s.id===id));
+}
+function toast(msg){
+  const t=$("toast"); t.innerHTML=msg; t.classList.add("show");
+  clearTimeout(toast._h); toast._h=setTimeout(()=>t.classList.remove("show"),4500);
+}
+
+/* ---------- Tema / yolculuk ---------- */
+function unlocked(c){ return store.sessions >= c.need }
+function currentCity(){
+  let c = CITIES.find(x=>x.id===store.city);
+  if(!c || !unlocked(c)) c = [...CITIES].reverse().find(unlocked);
+  return c;
+}
+function applyTheme(){
+  const c = currentCity(), r = document.documentElement.style;
+  r.setProperty("--bg", c.bg); r.setProperty("--bg2", c.bg2); r.setProperty("--accent", c.accent);
+  $("skyline").innerHTML = `<svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMax meet">${c.svg}</svg>`;
+  $("cityName").textContent = c.name;
+  renderJourney();
+}
+function renderJourney(){
+  const cur = currentCity(), s = store.sessions;
+  $("journey").innerHTML = CITIES.map(c=>{
+    const open = unlocked(c);
+    const sub = open ? (c.id===cur.id ? "seçili" : "açık")
+                     : `🔒 ${c.need - s} oturum sonra`;
+    return `<button class="city ${open?"":"locked"} ${c.id===cur.id?"active":""}" data-id="${c.id}" ${open?"":"disabled"}>${c.short}<small>${sub}</small></button>`;
+  }).join("");
+  const next = CITIES.find(c=>!unlocked(c));
+  $("progressNote").textContent = `Tamamlanan oturum: ${s}` +
+    (next ? ` · Sıradaki durak: ${next.short}` : " · Tüm şehirler açıldı, mâşâallah!");
+}
+$("journey").addEventListener("click", e=>{
+  const b = e.target.closest(".city"); if(!b || b.disabled) return;
+  store.city = b.dataset.id; applyTheme();
+});
+
+/* ---------- Ses: yumuşak zil ---------- */
+let actx;
+function chime(){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const now = actx.currentTime;
+    [[659.25,0],[880,0.35],[987.77,0.7]].forEach(([f,d])=>{
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type="sine"; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001, now+d);
+      g.gain.exponentialRampToValueAtTime(0.25, now+d+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+d+1.8);
+      o.connect(g).connect(actx.destination); o.start(now+d); o.stop(now+d+1.9);
+    });
+  }catch(e){}
+}
+
+/* ---------- Zamanlayıcı ---------- */
+const fmt = s => { s=Math.max(0,Math.ceil(s)); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0") };
+function startTimer(sec, tick, done){
+  clearInterval(timer); total=sec; remaining=sec; paused=false; onTick=tick; onFinish=done;
+  endAt = Date.now()+sec*1000; tick(sec); timer=setInterval(loop, 250);
+}
+function loop(){
+  if(paused) return;
+  remaining = (endAt-Date.now())/1000;
+  onTick(remaining);
+  if(remaining<=0){ clearInterval(timer); timer=null; onFinish(); }
+}
+function stopTimer(){ clearInterval(timer); timer=null; document.title="İlim Vakti – İslami Pomodoro"; }
+
+const CIRC = 2*Math.PI*52;
+$("ring").style.strokeDasharray = CIRC;
+function workTick(r){
+  $("wTime").textContent = fmt(r);
+  $("ring").style.strokeDashoffset = CIRC*(1 - Math.max(0,r)/total);
+  document.title = `${fmt(r)} · ${cfg.subject}`;
+}
+function breakTick(r){ $("bTime").textContent = fmt(r); document.title = `Mola ${fmt(r)}`; }
+
+/* ---------- Akış ---------- */
+$("startBtn").onclick = ()=>{
+  const subject = $("subject").value.trim();
+  const w = parseFloat($("workMin").value), b = parseFloat($("breakMin").value);
+  if(!subject) return $("err").textContent="Lütfen çalışacağın dersi yaz.";
+  if(!(w>0)) return $("err").textContent="Çalışma süresi en az 1 dakika olmalı.";
+  if(!(b>=0)) return $("err").textContent="Mola süresi 0 veya daha büyük olmalı.";
+  $("err").textContent="";
+  cfg = { subject, work:w, brk:b };
+  LS.setItem("ip_last", JSON.stringify(cfg));
+  // Ses iznini kullanıcı tıklamasıyla aç
+  try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); actx.resume(); }catch(e){}
+  show("s-intro");
+};
+$("introGo").onclick = startWork;
+
+function startWork(){
+  $("wSubject").textContent = cfg.subject;
+  $("pauseBtn").textContent = "Duraklat";
+  show("s-work");
+  startTimer(cfg.work*60, workTick, finishWork);
+}
+$("pauseBtn").onclick = ()=>{
+  if(!paused){ paused=true; $("pauseBtn").textContent="Devam et"; }
+  else { paused=false; endAt=Date.now()+remaining*1000; $("pauseBtn").textContent="Duraklat"; }
+};
+$("cancelBtn").onclick = ()=>{
+  if(!confirm("Oturumdan vazgeçilsin mi? Bu oturum sayılmayacak.")) return;
+  stopTimer(); show("s-setup");
+};
+
+function finishWork(){
+  chime();
+  const before = CITIES.filter(unlocked).length;
+  store.sessions = store.sessions + 1;
+  const nowOpen = CITIES.filter(unlocked);
+  if(nowOpen.length > before){
+    const c = nowOpen[nowOpen.length-1];
+    store.city = c.id;
+    toast(`Yeni durak açıldı: ${c.name} 🌙`);
+  } else toast("Oturum tamamlandı, bârekallah! ✨");
+  applyTheme();
+  if(cfg.brk>0) startBreak();
+  else finishBreak(true);
+}
+
+function startBreak(){
+  zCount=0; updateZikr();
+  show("s-break");
+  startTimer(cfg.brk*60, breakTick, ()=>{ chime(); finishBreak(false); });
+}
+function finishBreak(noBreak){
+  stopTimer();
+  $("doneTitle").textContent = noBreak ? "Oturum tamamlandı" : "Mola bitti";
+  $("doneText").textContent = `“${cfg.subject}” için ${store.sessions}. oturumun hayırlı olsun. Devam etmeye hazır mısın?`;
+  show("s-done");
+}
+$("skipBreak").onclick = ()=>finishBreak(false);
+$("againBtn").onclick = ()=>show("s-intro");
+$("newBtn").onclick = ()=>{ $("subject").value=""; show("s-setup"); $("subject").focus(); };
+
+/* ---------- Zikir sayacı ---------- */
+$("zikrSel").innerHTML = ZIKRS.map((z,i)=>`<option value="${i}">${z.tr.split(" – ")[0]}</option>`).join("");
+function updateZikr(){
+  const z = ZIKRS[$("zikrSel").value];
+  zTarget = Math.max(1, parseInt($("target").value)||1);
+  $("zAr").textContent = z.ar; $("zTr").textContent = z.tr;
+  $("zCount").textContent = zCount; $("zOf").textContent = "/ "+zTarget;
+  $("zBar").style.width = Math.min(100, zCount/zTarget*100)+"%";
+  $("tesbih").classList.toggle("done", zCount>=zTarget);
+}
+$("zikrSel").onchange = ()=>{ $("target").value = ZIKRS[$("zikrSel").value].t; zCount=0; updateZikr(); };
+$("target").oninput = updateZikr;
+function countZikr(){
+  zCount++;
+  if(zCount===zTarget){ chime(); toast("Hedefe ulaştın, Allah kabul etsin 🤲"); }
+  if(navigator.vibrate) navigator.vibrate(15);
+  updateZikr();
+}
+$("tesbih").onclick = countZikr;
+$("zReset").onclick = ()=>{ zCount=0; updateZikr(); };
+document.addEventListener("keydown", e=>{
+  if(e.code==="Space" && $("s-break").classList.contains("show") && !/INPUT|SELECT/.test(document.activeElement.tagName)){
+    e.preventDefault(); countZikr();
+  }
+});
+
+/* ---------- Başlangıç ---------- */
+try{
+  const last = JSON.parse(LS.getItem("ip_last")||"null");
+  if(last){ $("subject").value=last.subject; $("workMin").value=last.work; $("breakMin").value=last.brk; }
+}catch(e){}
+updateZikr();
+applyTheme();
+</script>
+</body>
+</html>
