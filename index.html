@@ -42,7 +42,7 @@
 
   main{width:100%;max-width:760px;padding:10px 16px 0;flex:1;display:flex;flex-direction:column}
   .card{
-    background:var(--card);border:1px solid rgba(212,175,55,.4);border-radius:20px;
+    background:linear-gradient(var(--card),var(--card)),var(--bg);border:1px solid rgba(212,175,55,.4);border-radius:20px;
     padding:28px 26px;text-align:center;backdrop-filter:blur(4px);
     box-shadow:0 10px 40px rgba(0,0,0,.35);position:relative;overflow:hidden;
   }
@@ -71,6 +71,20 @@
   .err{color:#ffb4a2;font-size:.85rem;margin-top:10px;min-height:1em}
 
   /* Giriş */
+  header{position:relative}
+  .report-btn{
+    position:absolute;top:18px;right:16px;padding:7px 14px;border-radius:999px;cursor:pointer;
+    border:1px solid var(--gold);background:rgba(0,0,0,.3);color:var(--gold2);font:inherit;font-size:.85rem;
+  }
+  .report-btn:hover{background:rgba(212,175,55,.18)}
+  table.report{width:100%;border-collapse:collapse;margin-bottom:22px;text-align:left;font-size:.95rem}
+  table.report caption{text-align:left;color:var(--gold2);font-weight:600;padding-bottom:6px}
+  table.report th,table.report td{padding:8px 10px;border-bottom:1px solid rgba(212,175,55,.2)}
+  table.report th{color:var(--muted);font-weight:500;font-size:.82rem}
+  table.report td:not(:first-child),table.report th:not(:first-child){text-align:right;white-space:nowrap}
+  table.report tfoot td{font-weight:600;color:var(--gold2);border-bottom:none}
+  #reportBody{max-height:55vh;overflow:auto}
+  @media (max-width:560px){ .report-btn{position:static;margin-top:8px} }
   .welcome-text{text-align:left;max-width:560px;margin:0 auto;line-height:1.7;font-size:1rem}
   .welcome-text p{margin-bottom:12px}
   .welcome-text b{color:var(--gold2)}
@@ -132,6 +146,7 @@
   <h1>İlim Vakti <span class="arabic">وَقْتُ الْعِلْمِ</span></h1>
   <div class="journey" id="journey"></div>
   <div class="progress-note" id="progressNote"></div>
+  <button class="report-btn" id="reportBtn">📊 Rapor</button>
 </header>
 
 <main>
@@ -144,6 +159,7 @@
         <p><b>İlim Vakti</b>, ders çalışmayı ibadet bilinciyle birleştiren bir pomodoro sayacıdır.</p>
         <p>Pomodoro tekniği, belirli bir süre bütün dikkatinle çalışıp ardından kısa bir mola vermene dayanır. Böylece zihnin yorulmadan uzun süre verimli kalır.</p>
         <p>Burada her çalışmaya Besmele ve <i>“Rabbim, ilmimi artır”</i> duasıyla başlarsın, molalarını da zikirle değerlendirirsin. Amaç, hem dersine odaklanmak hem de vaktini bereketli kılmak.</p>
+        <p><b>Şehir yolculuğu:</b> Her gün yolculuğa Mekke'den, Kâbe'nin yanından başlarsın. Tamamladığın her çalışma oturumu seni bir sonraki durağa götürür: <b>Mekke → Medine → Kudüs (Filistin) → Şam → Kaşgar (Doğu Türkistan)</b>. Yeni bir şehir açıldığında ekranın rengi ve alttaki silüet o şehre göre değişir. Açtığın şehirler arasında üstteki düğmelerden geçiş yapabilirsin. Gün bitince yolculuk sıfırlanır ve ertesi gün yeniden Mekke'den başlarsın.</p>
       </div>
       <button class="btn" id="welcomeGo">Okudum, başlayalım</button>
     </section>
@@ -227,6 +243,13 @@
         <button class="btn" id="againBtn">Aynı dersle devam et</button>
         <button class="btn ghost" id="newBtn">Yeni ders</button>
       </div>
+    </section>
+
+    <!-- 6. Rapor -->
+    <section class="screen" id="s-report">
+      <h2>Çalışma raporu</h2>
+      <div id="reportBody"></div>
+      <button class="btn ghost" id="reportBack">Geri dön</button>
     </section>
 
   </div>
@@ -359,11 +382,19 @@ const LS = (()=>{
   try{ const k="__t"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return localStorage; }
   catch(e){ const m={}; return { getItem:k=>k in m?m[k]:null, setItem:(k,v)=>{m[k]=String(v)} }; }
 })();
+// Yerel saate göre bugünün tarihi (YYYY-AA-GG)
+function today(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+// Çalışma kaydı: tamamlanan her oturum {date, subject, min}
+function getLog(){ try{ return JSON.parse(LS.getItem("ip_log")||"[]") }catch(e){ return [] } }
+function addLog(subject, min){ const l=getLog(); l.push({date:today(), subject, min}); LS.setItem("ip_log", JSON.stringify(l)); }
 const store = {
-  get sessions(){ return +LS.getItem("ip_sessions") || 0 },
-  set sessions(v){ LS.setItem("ip_sessions", v) },
-  get city(){ return LS.getItem("ip_city") },
-  set city(v){ LS.setItem("ip_city", v) },
+  // Aşamalar her gün sıfırdan başlar: sadece bugünkü oturumlar sayılır
+  get sessions(){ const t=today(); return getLog().filter(e=>e.date===t).length },
+  get city(){ return LS.getItem("ip_cityDay")===today() ? LS.getItem("ip_city") : null },
+  set city(v){ LS.setItem("ip_city", v); LS.setItem("ip_cityDay", today()); },
 };
 const $ = id => document.getElementById(id);
 let cfg = { subject:"", work:25, brk:5 };
@@ -402,7 +433,7 @@ function renderJourney(){
     return `<button class="city ${open?"":"locked"} ${c.id===cur.id?"active":""}" data-id="${c.id}" ${open?"":"disabled"}>${c.short}<small>${sub}</small></button>`;
   }).join("");
   const next = CITIES.find(c=>!unlocked(c));
-  $("progressNote").textContent = `Tamamlanan oturum: ${s}` +
+  $("progressNote").textContent = `Bugün tamamlanan oturum: ${s}` +
     (next ? ` · Sıradaki durak: ${next.short}` : " · Tüm şehirler açıldı, mâşâallah!");
 }
 $("journey").addEventListener("click", e=>{
@@ -485,7 +516,7 @@ $("cancelBtn").onclick = ()=>{
 function finishWork(){
   chime();
   const before = CITIES.filter(unlocked).length;
-  store.sessions = store.sessions + 1;
+  addLog(cfg.subject, cfg.work);
   const nowOpen = CITIES.filter(unlocked);
   if(nowOpen.length > before){
     const c = nowOpen[nowOpen.length-1];
@@ -505,12 +536,56 @@ function startBreak(){
 function finishBreak(noBreak){
   stopTimer();
   $("doneTitle").textContent = noBreak ? "Oturum tamamlandı" : "Mola bitti";
-  $("doneText").textContent = `“${cfg.subject}” için ${store.sessions}. oturumun hayırlı olsun. Devam etmeye hazır mısın?`;
+  $("doneText").textContent = `“${cfg.subject}” için çalıştığın oturum hayırlı olsun. Bugün toplam ${store.sessions} oturum tamamladın. Devam etmeye hazır mısın?`;
   show("s-done");
 }
 $("skipBreak").onclick = ()=>finishBreak(false);
 $("againBtn").onclick = ()=>show("s-intro");
 $("newBtn").onclick = ()=>{ $("subject").value=""; show("s-setup"); $("subject").focus(); };
+
+/* ---------- Rapor ---------- */
+let beforeReport = "s-welcome";
+const esc = s => String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function fmtMin(m){
+  m = Math.round(m);
+  const h = Math.floor(m/60), r = m%60;
+  return h ? `${h} sa${r ? " "+r+" dk" : ""}` : `${r} dk`;
+}
+function fmtDate(iso){
+  const [y,mo,d] = iso.split("-").map(Number);
+  const s = new Date(y,mo-1,d).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric",weekday:"long"});
+  return iso===today() ? `Bugün · ${s}` : s;
+}
+function renderReport(){
+  const days = {};
+  getLog().forEach(e=>{
+    const d = days[e.date] ||= {};
+    const k = e.subject.trim().toLocaleLowerCase("tr-TR");
+    const row = d[k] ||= { subject:e.subject.trim(), min:0, n:0 };
+    row.min += e.min; row.n++;
+  });
+  const dates = Object.keys(days).sort().reverse();
+  if(!dates.length){
+    $("reportBody").innerHTML = `<p class="meaning">Henüz tamamlanmış bir oturum yok. İlk oturumunu bitirdiğinde burada görünecek.</p>`;
+    return;
+  }
+  $("reportBody").innerHTML = dates.map(date=>{
+    const rows = Object.values(days[date]).sort((a,b)=>b.min-a.min);
+    const tMin = rows.reduce((s,r)=>s+r.min,0), tN = rows.reduce((s,r)=>s+r.n,0);
+    return `<table class="report">
+      <caption>${fmtDate(date)}</caption>
+      <thead><tr><th>Ders</th><th>Süre</th><th>Oturum</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><td>${esc(r.subject)}</td><td>${fmtMin(r.min)}</td><td>${r.n}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td>Toplam</td><td>${fmtMin(tMin)}</td><td>${tN}</td></tr></tfoot>
+    </table>`;
+  }).join("");
+}
+$("reportBtn").onclick = ()=>{
+  const cur = document.querySelector(".screen.show").id;
+  if(cur !== "s-report") beforeReport = cur;
+  renderReport(); show("s-report");
+};
+$("reportBack").onclick = ()=>show(beforeReport);
 
 /* ---------- Zikir sayacı ---------- */
 $("zikrSel").innerHTML = ZIKRS.map((z,i)=>`<option value="${i}">${z.tr.split(" – ")[0]}</option>`).join("");
