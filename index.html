@@ -190,10 +190,10 @@
         <p><b>Şehir yolculuğu:</b> Her gün yolculuğa Mekke'den, Kâbe'nin yanından başlarsın. Tek başına ya da grupla tamamladığın her çalışma oturumu seni bir sonraki durağa götürür: <b>Mekke → Medine → Kudüs (Filistin) → Şam → Kaşgar (Doğu Türkistan)</b>. Yeni bir şehir açıldığında ekranın rengi ve alttaki silüet o şehre göre değişir. Açtığın şehirler arasında üstteki düğmelerden geçiş yapabilirsin. Gün bitince yolculuk sıfırlanır ve ertesi gün yeniden Mekke'den başlarsın.</p>
         <p><b>📊 Rapor:</b> Üstteki “Rapor” düğmesinden hangi dersten ne kadar çalıştığını gün gün görebilirsin. Her gün için ders, süre ve oturum sayısı listelenir; tek başına yaptığın çalışmalar ile grup çalışmaları ayrı tablolarda gösterilir. Yalnızca tamamlanan oturumlar sayılır; raporun sadece kendi tarayıcında saklanır.</p>
         <p><b>👥 Grup çalışması:</b> Üstteki “Grup” düğmesiyle arkadaşlarınla aynı sayaçla çalışabilirsin. Bir kişi “Oda kur” ile oda açar ve çıkan 6 haneli kodu arkadaşlarına gönderir; diğerleri bu kodu “Odaya katıl” kısmına yazarak odaya girer. Çalışma ve mola süresini oda belirler, herkes kendi dersini yazar ve odada kimin hangi dersi çalıştığı görünür. Sayacı yalnızca odayı kuran kişi başlatır, duraklatır ve kapatır. Tamamlanan grup oturumları raporda ayrı bir “Grup çalışması” bölümünde gösterilir ve odadaki herkesin şehir yolculuğunu bir durak ilerletir.</p>
-        <p><b>🏆 Günlük sıralama:</b> Her gün en çok çalışan ilk 3 kişi bu sayfanın en üstünde gösterilir. Sıralama, o gün tek başına ve grupla tamamladığın oturumların toplam süresine göre yapılır ve her gün sıfırdan başlar. Sıralamada görünmek için aşağıya adını yaz.</p>
+        <p><b>🏆 Günlük sıralama:</b> Her gün en çok çalışan ilk 3 kişi bu sayfanın en üstünde gösterilir. Sıralama, o gün tek başına ve grupla tamamladığın oturumların toplam süresine göre yapılır ve her gün sıfırdan başlar. Sıralamada görünmek istersen aşağıya adını yaz; istemiyorsan boş bırakıp geçebilirsin.</p>
       </div>
       <div style="max-width:320px;margin:6px auto 0">
-        <label for="userName">Adın (sıralamada bu görünür)</label>
+        <label for="userName">Adın (isteğe bağlı – yazarsan sıralamada görünürsün)</label>
         <input id="userName" maxlength="24" placeholder="ör. Ahmet">
       </div>
       <div class="err" id="nameErr"></div>
@@ -589,11 +589,13 @@ $("startBtn").onclick = ()=>{
 $("introGo").onclick = startWork;
 $("userName").value = LS.getItem("ip_name") || "";
 $("welcomeGo").onclick = ()=>{
+  // Ad isteğe bağlı: boş bırakan sıralamada görünmez
   const n = $("userName").value.trim();
-  if(!n){ $("nameErr").textContent = "Lütfen adını yaz."; $("userName").focus(); return; }
-  $("nameErr").textContent = "";
-  if(n !== LS.getItem("ip_name")){ LS.setItem("ip_name", n); window.onStudyLogged?.(); }
-  if(!LS.getItem("ip_gName")) LS.setItem("ip_gName", n);
+  if(n !== (LS.getItem("ip_name") || "")){
+    if(n) LS.setItem("ip_name", n); else LS.removeItem("ip_name");
+    window.onStudyLogged?.();
+  }
+  if(n && !LS.getItem("ip_gName")) LS.setItem("ip_gName", n);
   show("s-setup"); $("subject").focus();
 };
 // Bugün (bireysel + grup) toplam çalışılan dakika
@@ -788,8 +790,13 @@ function connect(silent){
 /* ---------- Günlük sıralama (ilk 3) ---------- */
 let lbUnsub = null, lbDate = null;
 window.onStudyLogged = async ()=>{
-  const name = LS.getItem("ip_name"); if(!name) return;
+  const name = LS.getItem("ip_name");
   const min = Math.round(todayMinutes()*10)/10;
+  if(!name){
+    // Adını silen kişi bugünkü sıralamadan da çıkar
+    if(g.db){ try{ await g.api.remove(R(`leaderboard/${today()}/${g.uid}`)); }catch(e){ console.error(e); } }
+    return;
+  }
   if(min <= 0) return;
   if(!await connect(true)) return;
   try{
