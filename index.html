@@ -90,6 +90,14 @@
   @media (max-width:560px){ .g-cols{flex-direction:column} }
   .report-btn:hover{background:rgba(212,175,55,.18)}
   table.report{width:100%;border-collapse:collapse;margin-bottom:22px;text-align:left;font-size:.95rem}
+  .leader{max-width:420px;margin:0 auto 18px;border:1px solid rgba(212,175,55,.45);border-radius:14px;padding:12px 16px;background:rgba(212,175,55,.07)}
+  .leader-title{color:var(--gold2);font-weight:600;margin-bottom:6px}
+  .leader ol{list-style:none;text-align:left}
+  .leader li{display:flex;justify-content:space-between;gap:10px;padding:5px 2px;border-bottom:1px solid rgba(212,175,55,.15)}
+  .leader li:last-child{border-bottom:none}
+  .leader li b{color:var(--gold2);font-variant-numeric:tabular-nums}
+  .leader li.muted{color:var(--muted);justify-content:center;font-size:.9rem}
+  .leader li.me{color:var(--gold2)}
   .report-day{text-align:left;color:var(--gold2);font-weight:600;font-size:1.05rem;margin:4px 0 8px;padding-bottom:4px;border-bottom:1px solid rgba(212,175,55,.45)}
   table.report caption{font-size:.9rem;text-align:left;color:var(--gold2);font-weight:600;padding-bottom:6px}
   table.report th,table.report td{padding:8px 10px;border-bottom:1px solid rgba(212,175,55,.2)}
@@ -171,6 +179,10 @@
     <!-- 0. Açıklama -->
     <section class="screen show" id="s-welcome">
       <h2>Hoş geldin</h2>
+      <div class="leader">
+        <div class="leader-title">🏆 Bugünün ilk 3'ü</div>
+        <ol id="leaderList"><li class="muted">Yükleniyor…</li></ol>
+      </div>
       <div class="welcome-text">
         <p><b>İlim Vakti</b>, ders çalışmayı ibadet bilinciyle birleştiren bir pomodoro sayacıdır.</p>
         <p>Pomodoro tekniği, belirli bir süre bütün dikkatinle çalışıp ardından kısa bir mola vermene dayanır. Böylece zihnin yorulmadan uzun süre verimli kalır.</p>
@@ -178,7 +190,13 @@
         <p><b>Şehir yolculuğu:</b> Her gün yolculuğa Mekke'den, Kâbe'nin yanından başlarsın. Tek başına ya da grupla tamamladığın her çalışma oturumu seni bir sonraki durağa götürür: <b>Mekke → Medine → Kudüs (Filistin) → Şam → Kaşgar (Doğu Türkistan)</b>. Yeni bir şehir açıldığında ekranın rengi ve alttaki silüet o şehre göre değişir. Açtığın şehirler arasında üstteki düğmelerden geçiş yapabilirsin. Gün bitince yolculuk sıfırlanır ve ertesi gün yeniden Mekke'den başlarsın.</p>
         <p><b>📊 Rapor:</b> Üstteki “Rapor” düğmesinden hangi dersten ne kadar çalıştığını gün gün görebilirsin. Her gün için ders, süre ve oturum sayısı listelenir; tek başına yaptığın çalışmalar ile grup çalışmaları ayrı tablolarda gösterilir. Yalnızca tamamlanan oturumlar sayılır; raporun sadece kendi tarayıcında saklanır.</p>
         <p><b>👥 Grup çalışması:</b> Üstteki “Grup” düğmesiyle arkadaşlarınla aynı sayaçla çalışabilirsin. Bir kişi “Oda kur” ile oda açar ve çıkan 6 haneli kodu arkadaşlarına gönderir; diğerleri bu kodu “Odaya katıl” kısmına yazarak odaya girer. Çalışma ve mola süresini oda belirler, herkes kendi dersini yazar ve odada kimin hangi dersi çalıştığı görünür. Sayacı yalnızca odayı kuran kişi başlatır, duraklatır ve kapatır. Tamamlanan grup oturumları raporda ayrı bir “Grup çalışması” bölümünde gösterilir ve odadaki herkesin şehir yolculuğunu bir durak ilerletir.</p>
+        <p><b>🏆 Günlük sıralama:</b> Her gün en çok çalışan ilk 3 kişi bu sayfanın en üstünde gösterilir. Sıralama, o gün tek başına ve grupla tamamladığın oturumların toplam süresine göre yapılır ve her gün sıfırdan başlar. Sıralamada görünmek için aşağıya adını yaz.</p>
       </div>
+      <div style="max-width:320px;margin:6px auto 0">
+        <label for="userName">Adın (sıralamada bu görünür)</label>
+        <input id="userName" maxlength="24" placeholder="ör. Ahmet">
+      </div>
+      <div class="err" id="nameErr"></div>
       <button class="btn" id="welcomeGo">Okudum, başlayalım</button>
     </section>
 
@@ -459,10 +477,10 @@ function today(){
 }
 // Çalışma kaydı: tamamlanan her oturum {date, subject, min}
 function getLog(){ try{ return JSON.parse(LS.getItem("ip_log")||"[]") }catch(e){ return [] } }
-function addLog(subject, min){ const l=getLog(); l.push({date:today(), subject, min}); LS.setItem("ip_log", JSON.stringify(l)); }
+function addLog(subject, min){ const l=getLog(); l.push({date:today(), subject, min}); LS.setItem("ip_log", JSON.stringify(l)); window.onStudyLogged?.(); }
 // Grup oturumları ayrı tutulur: raporda ayrı gösterilir, şehir yolculuğunu da ilerletir
 function getGroupLog(){ try{ return JSON.parse(LS.getItem("ip_glog")||"[]") }catch(e){ return [] } }
-function addGroupLog(subject, min){ const l=getGroupLog(); l.push({date:today(), subject, min}); LS.setItem("ip_glog", JSON.stringify(l)); }
+function addGroupLog(subject, min){ const l=getGroupLog(); l.push({date:today(), subject, min}); LS.setItem("ip_glog", JSON.stringify(l)); window.onStudyLogged?.(); }
 const store = {
   // Aşamalar her gün sıfırdan başlar: bugünkü bireysel + grup oturumları sayılır
   get sessions(){ const t=today(); return [...getLog(), ...getGroupLog()].filter(e=>e.date===t).length },
@@ -569,7 +587,20 @@ $("startBtn").onclick = ()=>{
   show("s-intro");
 };
 $("introGo").onclick = startWork;
-$("welcomeGo").onclick = ()=>{ show("s-setup"); $("subject").focus(); };
+$("userName").value = LS.getItem("ip_name") || "";
+$("welcomeGo").onclick = ()=>{
+  const n = $("userName").value.trim();
+  if(!n){ $("nameErr").textContent = "Lütfen adını yaz."; $("userName").focus(); return; }
+  $("nameErr").textContent = "";
+  if(n !== LS.getItem("ip_name")){ LS.setItem("ip_name", n); window.onStudyLogged?.(); }
+  if(!LS.getItem("ip_gName")) LS.setItem("ip_gName", n);
+  show("s-setup"); $("subject").focus();
+};
+// Bugün (bireysel + grup) toplam çalışılan dakika
+function todayMinutes(){
+  const t = today();
+  return [...getLog(), ...getGroupLog()].filter(e=>e.date===t).reduce((s,e)=>s+e.min,0);
+}
 
 function startWork(){
   $("wSubject").textContent = cfg.subject;
@@ -728,26 +759,63 @@ const el = id => document.getElementById(id);
 el("gRing").style.strokeDasharray = CIRC;
 
 // Kayıtlı ad ve ders
-el("gName").value = LS.getItem("ip_gName") || "";
+el("gName").value = LS.getItem("ip_gName") || LS.getItem("ip_name") || "";
 el("gSubject").value = LS.getItem("ip_gSubject") || "";
 
-async function connect(){
-  if(g.db) return true;
-  if(!FIREBASE_CONFIG){ gErr("Grup çalışması henüz kurulmadı (Firebase ayarı eksik)."); return false; }
-  try{
-    const [appM, authM, dbM] = await Promise.all([
-      import(FB+"firebase-app.js"), import(FB+"firebase-auth.js"), import(FB+"firebase-database.js")
-    ]);
-    const app = appM.initializeApp(FIREBASE_CONFIG);
-    const cred = await authM.signInAnonymously(authM.getAuth(app));
-    g.uid = cred.user.uid;
-    g.api = dbM; g.db = dbM.getDatabase(app);
-    dbM.onValue(dbM.ref(g.db, ".info/serverTimeOffset"), s => g.offset = s.val() || 0);
-    return true;
-  }catch(e){
-    console.error(e); gErr("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene."); return false;
+// Firebase'e tek seferlik bağlantı (aynı anda birden çok yerden çağrılabilir)
+let connecting = null;
+function connect(silent){
+  if(!connecting){
+    connecting = (async ()=>{
+      if(!FIREBASE_CONFIG) throw new Error("config");
+      const [appM, authM, dbM] = await Promise.all([
+        import(FB+"firebase-app.js"), import(FB+"firebase-auth.js"), import(FB+"firebase-database.js")
+      ]);
+      const app = appM.initializeApp(FIREBASE_CONFIG);
+      const cred = await authM.signInAnonymously(authM.getAuth(app));
+      g.uid = cred.user.uid;
+      g.api = dbM; g.db = dbM.getDatabase(app);
+      dbM.onValue(dbM.ref(g.db, ".info/serverTimeOffset"), s => g.offset = s.val() || 0);
+    })();
+    connecting.catch(e=>{ console.error(e); connecting = null; });   // hata olursa sonra tekrar denenebilsin
   }
+  return connecting.then(()=>true, ()=>{
+    if(!silent) gErr("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.");
+    return false;
+  });
 }
+
+/* ---------- Günlük sıralama (ilk 3) ---------- */
+let lbUnsub = null, lbDate = null;
+window.onStudyLogged = async ()=>{
+  const name = LS.getItem("ip_name"); if(!name) return;
+  const min = Math.round(todayMinutes()*10)/10;
+  if(min <= 0) return;
+  if(!await connect(true)) return;
+  try{
+    await g.api.set(R(`leaderboard/${today()}/${g.uid}`), { name, min:Math.min(min,1440), updatedAt:g.api.serverTimestamp() });
+  }catch(e){ console.error(e); }
+};
+function watchLeaderboard(){
+  if(lbUnsub) lbUnsub();
+  lbDate = today();
+  const q = g.api.query(R("leaderboard/"+lbDate), g.api.orderByChild("min"), g.api.limitToLast(3));
+  lbUnsub = g.api.onValue(q, s=>{
+    const rows = [];
+    s.forEach(c=>{ rows.push({ id:c.key, ...c.val() }); });
+    rows.reverse();
+    const medal = ["🥇","🥈","🥉"];
+    el("leaderList").innerHTML = rows.length
+      ? rows.map((r,i)=>`<li class="${r.id===g.uid?"me":""}"><span>${medal[i]} ${esc(r.name)}${r.id===g.uid?" (sen)":""}</span><b>${fmtMin(r.min)}</b></li>`).join("")
+      : `<li class="muted">Bugün henüz kimse oturum tamamlamadı. İlk sen ol!</li>`;
+  }, ()=>{ el("leaderList").innerHTML = `<li class="muted">Sıralama yüklenemedi.</li>`; });
+}
+(async ()=>{
+  if(!await connect(true)){ el("leaderList").innerHTML = `<li class="muted">Sıralama yüklenemedi.</li>`; return; }
+  watchLeaderboard();
+  window.onStudyLogged();                       // bugünkü süreyi senkronla
+  setInterval(()=>{ if(today()!==lbDate) watchLeaderboard(); }, 60000);   // gece yarısı yeni güne geç
+})();
 const now = () => Date.now() + g.offset;   // sunucu saatine göre şimdi
 const R = path => g.api.ref(g.db, path);
 function gErr(m){ el("gErr").textContent = m || ""; }
