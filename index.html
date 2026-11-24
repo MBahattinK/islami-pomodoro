@@ -90,7 +90,8 @@
   @media (max-width:560px){ .g-cols{flex-direction:column} }
   .report-btn:hover{background:rgba(212,175,55,.18)}
   table.report{width:100%;border-collapse:collapse;margin-bottom:22px;text-align:left;font-size:.95rem}
-  table.report caption{text-align:left;color:var(--gold2);font-weight:600;padding-bottom:6px}
+  .report-day{text-align:left;color:var(--gold2);font-weight:600;font-size:1.05rem;margin:4px 0 8px;padding-bottom:4px;border-bottom:1px solid rgba(212,175,55,.45)}
+  table.report caption{font-size:.9rem;text-align:left;color:var(--gold2);font-weight:600;padding-bottom:6px}
   table.report th,table.report td{padding:8px 10px;border-bottom:1px solid rgba(212,175,55,.2)}
   table.report th{color:var(--muted);font-weight:500;font-size:.82rem}
   table.report td:not(:first-child),table.report th:not(:first-child){text-align:right;white-space:nowrap}
@@ -175,8 +176,8 @@
         <p>Pomodoro tekniği, belirli bir süre bütün dikkatinle çalışıp ardından kısa bir mola vermene dayanır. Böylece zihnin yorulmadan uzun süre verimli kalır.</p>
         <p>Burada her çalışmaya Besmele ve <i>“Rabbim, ilmimi artır”</i> duasıyla başlarsın, molalarını da zikirle değerlendirirsin. Amaç, hem dersine odaklanmak hem de vaktini bereketli kılmak.</p>
         <p><b>Şehir yolculuğu:</b> Her gün yolculuğa Mekke'den, Kâbe'nin yanından başlarsın. Tamamladığın her çalışma oturumu seni bir sonraki durağa götürür: <b>Mekke → Medine → Kudüs (Filistin) → Şam → Kaşgar (Doğu Türkistan)</b>. Yeni bir şehir açıldığında ekranın rengi ve alttaki silüet o şehre göre değişir. Açtığın şehirler arasında üstteki düğmelerden geçiş yapabilirsin. Gün bitince yolculuk sıfırlanır ve ertesi gün yeniden Mekke'den başlarsın.</p>
-        <p><b>📊 Rapor:</b> Üstteki “Rapor” düğmesinden hangi dersten ne kadar çalıştığını gün gün görebilirsin. Her gün için ders, süre ve oturum sayısı bir tabloda listelenir. Yalnızca tamamlanan oturumlar sayılır; raporun sadece kendi tarayıcında saklanır.</p>
-        <p><b>👥 Grup çalışması:</b> Üstteki “Grup” düğmesiyle arkadaşlarınla aynı sayaçla çalışabilirsin. Bir kişi “Oda kur” ile oda açar ve çıkan 6 haneli kodu arkadaşlarına gönderir; diğerleri bu kodu “Odaya katıl” kısmına yazarak odaya girer. Çalışma ve mola süresini oda belirler, herkes kendi dersini yazar ve odada kimin hangi dersi çalıştığı görünür. Sayacı yalnızca odayı kuran kişi başlatır, duraklatır ve kapatır. Grup oturumları kişisel rapora ve şehir yolculuğuna eklenmez.</p>
+        <p><b>📊 Rapor:</b> Üstteki “Rapor” düğmesinden hangi dersten ne kadar çalıştığını gün gün görebilirsin. Her gün için ders, süre ve oturum sayısı listelenir; tek başına yaptığın çalışmalar ile grup çalışmaları ayrı tablolarda gösterilir. Yalnızca tamamlanan oturumlar sayılır; raporun sadece kendi tarayıcında saklanır.</p>
+        <p><b>👥 Grup çalışması:</b> Üstteki “Grup” düğmesiyle arkadaşlarınla aynı sayaçla çalışabilirsin. Bir kişi “Oda kur” ile oda açar ve çıkan 6 haneli kodu arkadaşlarına gönderir; diğerleri bu kodu “Odaya katıl” kısmına yazarak odaya girer. Çalışma ve mola süresini oda belirler, herkes kendi dersini yazar ve odada kimin hangi dersi çalıştığı görünür. Sayacı yalnızca odayı kuran kişi başlatır, duraklatır ve kapatır. Tamamlanan grup oturumları raporda ayrı bir “Grup çalışması” bölümünde gösterilir, ama şehir yolculuğunu ilerletmez.</p>
       </div>
       <button class="btn" id="welcomeGo">Okudum, başlayalım</button>
     </section>
@@ -459,6 +460,9 @@ function today(){
 // Çalışma kaydı: tamamlanan her oturum {date, subject, min}
 function getLog(){ try{ return JSON.parse(LS.getItem("ip_log")||"[]") }catch(e){ return [] } }
 function addLog(subject, min){ const l=getLog(); l.push({date:today(), subject, min}); LS.setItem("ip_log", JSON.stringify(l)); }
+// Grup oturumları ayrı tutulur: rapora girer ama şehir yolculuğunu ilerletmez
+function getGroupLog(){ try{ return JSON.parse(LS.getItem("ip_glog")||"[]") }catch(e){ return [] } }
+function addGroupLog(subject, min){ const l=getGroupLog(); l.push({date:today(), subject, min}); LS.setItem("ip_glog", JSON.stringify(l)); }
 const store = {
   // Aşamalar her gün sıfırdan başlar: sadece bugünkü oturumlar sayılır
   get sessions(){ const t=today(); return getLog().filter(e=>e.date===t).length },
@@ -625,29 +629,39 @@ function fmtDate(iso){
   const s = new Date(y,mo-1,d).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric",weekday:"long"});
   return iso===today() ? `Bugün · ${s}` : s;
 }
-function renderReport(){
+// Kayıtları gün → ders olarak topla
+function groupByDay(log){
   const days = {};
-  getLog().forEach(e=>{
+  log.forEach(e=>{
     const d = days[e.date] ||= {};
     const k = e.subject.trim().toLocaleLowerCase("tr-TR");
     const row = d[k] ||= { subject:e.subject.trim(), min:0, n:0 };
     row.min += e.min; row.n++;
   });
-  const dates = Object.keys(days).sort().reverse();
+  return days;
+}
+function reportTable(title, day){
+  if(!day) return "";
+  const rows = Object.values(day).sort((a,b)=>b.min-a.min);
+  const tMin = rows.reduce((s,r)=>s+r.min,0), tN = rows.reduce((s,r)=>s+r.n,0);
+  return `<table class="report">
+    <caption>${title}</caption>
+    <thead><tr><th>Ders</th><th>Süre</th><th>Oturum</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.subject)}</td><td>${fmtMin(r.min)}</td><td>${r.n}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>Toplam</td><td>${fmtMin(tMin)}</td><td>${tN}</td></tr></tfoot>
+  </table>`;
+}
+function renderReport(){
+  const solo = groupByDay(getLog()), grp = groupByDay(getGroupLog());
+  const dates = [...new Set([...Object.keys(solo), ...Object.keys(grp)])].sort().reverse();
   if(!dates.length){
     $("reportBody").innerHTML = `<p class="meaning">Henüz tamamlanmış bir oturum yok. İlk oturumunu bitirdiğinde burada görünecek.</p>`;
     return;
   }
-  $("reportBody").innerHTML = dates.map(date=>{
-    const rows = Object.values(days[date]).sort((a,b)=>b.min-a.min);
-    const tMin = rows.reduce((s,r)=>s+r.min,0), tN = rows.reduce((s,r)=>s+r.n,0);
-    return `<table class="report">
-      <caption>${fmtDate(date)}</caption>
-      <thead><tr><th>Ders</th><th>Süre</th><th>Oturum</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr><td>${esc(r.subject)}</td><td>${fmtMin(r.min)}</td><td>${r.n}</td></tr>`).join("")}</tbody>
-      <tfoot><tr><td>Toplam</td><td>${fmtMin(tMin)}</td><td>${tN}</td></tr></tfoot>
-    </table>`;
-  }).join("");
+  $("reportBody").innerHTML = dates.map(date=>`
+    <div class="report-day">${fmtDate(date)}</div>
+    ${reportTable("Bireysel çalışma", solo[date])}
+    ${reportTable("👥 Grup çalışması", grp[date])}`).join("");
 }
 $("reportBtn").onclick = ()=>{
   const cur = document.querySelector(".screen.show").id;
@@ -849,6 +863,11 @@ function render(){
     if(p.phase==="work") toast("Bismillah, grup çalışması başladı 🤲");
     if(p.phase==="break") toast("Mola vakti ✨");
     if(p.phase==="done") toast("Grup oturumu tamamlandı, bârekallah!");
+  }
+  // Çalışma bölümü bitince grup oturumunu kendi rapora (ayrı bölüme) kaydet
+  if(g.lastPhase==="work" && (p.phase==="break" || p.phase==="done")){
+    const me = (r.members||{})[g.uid];
+    if(me) addGroupLog(me.subject, r.work);
   }
   g.lastPhase = p.phase;
 
